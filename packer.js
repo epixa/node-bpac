@@ -5,6 +5,7 @@ var Path = require('path')
 var glob = require('glob')
 var async = require('async')
 var _ = require('underscore')
+var bower = require('./bower')
 
 
 var log = function() {
@@ -15,17 +16,22 @@ var error = function() {
   console.error.apply(console, arguments)
 }
 
+var requireJSON = function(path) {
+  return JSON.parse(fs.readFileSync(path, "utf8"))
+}
+
 
 module.exports = function(targetModule) {
 
   var cwd = process.cwd()
-  var pkgjson = require(Path.join(cwd, 'package.json'))
-  var modulePath = Path.join(cwd, '.modules')
+  var pkgjson = require(Path.join(cwd, 'bower.json'))
+  var modulePath = Path.join(cwd, '.components')
+  var bowerComponentsPath = bower.dir(cwd)
   var sep = '-v'
 
   var pack = function(name, version, cb) {
     log('Packing', name+sep+version)
-    var source = Path.join(cwd, 'node_modules', name)
+    var source = Path.join(bowerComponentsPath, name)
     var dest = Path.join(modulePath, name+sep+version+'.tgz')
     new tgz().compress(source, dest, function(err) {
       if (err)
@@ -62,7 +68,7 @@ module.exports = function(targetModule) {
     var name = targetModule
     var file, version
     try {
-      file = require(Path.join(process.cwd(), 'node_modules', name, 'package.json'))
+      file = require(Path.join(bowerComponentsPath, name, '.bower.json'))
       version = file.version
     } catch(e) {
       error(e)
@@ -74,20 +80,12 @@ module.exports = function(targetModule) {
   // otherwise pac them all
   else {
 
-    // get a list of currently installed node_modules
-    var curInst = glob.sync('node_modules/*/package.json', {cwd:cwd}).reduce(function(memo, file) {
-      file = Path.join(cwd, file)
+    // get a list of currently installed bower components
+    var curInst = glob.sync(bowerComponentsPath + '/*/.bower.json').reduce(function(memo, file) {
       var pkg = require(file)
       memo[pkg.name] = pkg.version
       return memo
     }, {})
-
-    // remove any packed modules that are not in the dependencies list
-    _.difference(Object.keys(curMods), Object.keys(deps)).forEach(function(name) {
-      var fv = name+sep+curMods[name]
-      log('Module ', fv, 'is not in the dependencies list, removing it.')
-      fs.unlinkSync(Path.join(modulePath, fv+'.tgz'))
-    })
 
     // warn about missing deps
     _.difference(Object.keys(deps), Object.keys(curInst)).forEach(function(name) {
@@ -97,7 +95,6 @@ module.exports = function(targetModule) {
     // Updated any dependencies that have different versions
     // and pack any that are missing completely
     async.eachSeries(Object.keys(curInst), function(name, cb) {
-      if (!deps[name]) return cb()
       if (curInst[name] === curMods[name]) return cb()
       if (!curMods[name]) {
         log('Adding', name+sep+curInst[name])

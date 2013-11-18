@@ -1,31 +1,41 @@
-node-pac
+node-bpac
 ============
 
-Pack your node_modules as *.tgz files for version control and easy deploys
+Pack your bower_components as *.tgz files for version control and easy deploys
+
+This module is based off of the **[`pac`][pac]** module from **[mikefrey][mikefrey]**.
+
+[pac]: https://npmjs.org/package/pac
+[mikefrey]: https://twitter.com/mikefrey
 
 Why?
 ----
 
-Because commiting the `node_modules` into source control sucks. It kills
-diffs and makes code reviews shitty.
-
-Read more in my [blog post](http://www.codinginthecrease.com/news_article/show/307636).
+Relying on the availability of a third party service when deploying has a
+tendency to cause headaches, but committing the raw source of third party
+components makes for messy changesets that can kill the ability to do a proper
+code review.
 
 Installation
 ------------
 
-`npm install -g pac`
+`npm install -g bpac`
 
 Usage
 -----
 
-From a command prompt, run `pac` from your project's root directory.
+From a command prompt, running `bpac` from your project's root directory will
+package all of your `bower_components` into the `.components` directory.
 
-You'll see a new `.modules` that contains gzipped tarballs of your
-dependencies. When deploying, you'll probably need a script that installs
-your modules from the `.modules` directory. npm natively supports
-installing them:
+Running `bpac install` from the same directory will unpack all archives in the
+`.components` directory into your `bower_components` directory.
+
+**Note:** The `directory` property of your `.bowerrc` will be used if its set.
+
+If your build/deploy system does not have access to bpac, you can use a script
+similar to the following:
 
 ```
-npm install .modules/mkdirp-v0.3.5.tgz
+mkdir -p bower_components
+for f in .components/*.tgz; do tar -xzf $f -C bower_components/; done
 ```
